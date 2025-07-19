@@ -4,27 +4,28 @@ mod common;
 
 use common::*;
 
-use photo_backup::app;
+use photo_backup::{app, args};
 use photo_backup::args::Args;
 
 use std::fs::{self, File};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{self, PathBuf};
 
-#[test]
-fn test_default_copy() {
-    clear_playground();
+fn test_helper(path: &PathBuf, source: &[&str], expected: &[&str], args: Args) {
+    let source_path = path.join("source");
+    let target_path = path.join("target");
+    let expected_path = path.join("expected");
+    std::fs::remove_dir_all(path).ok();
 
-    create_files(&[
-        "source/file1.txt",
-        "source/file2.txt",
-        "source/subdir/file3.txt",
-    ]);
+    create_files(
+        &source_path,
+        &source,
+    );
 
-    let args = Args {
-        source: PathBuf::from(PLAYGROUND_PATH_SOURCE),
-        target: PathBuf::from(PLAYGROUND_PATH_TARGET),
-    };
+    create_files(
+        &expected_path,
+        &expected,
+    );
 
     let result = app::run(args);
     assert!(
@@ -34,10 +35,42 @@ fn test_default_copy() {
     );
 
     assert!(
-        are_directory_equal(
-            &PathBuf::from(PLAYGROUND_PATH_SOURCE),
-            &PathBuf::from(PLAYGROUND_PATH_TARGET)
-        ),
+        are_directory_equal(&target_path, &expected_path),
         "Source and target directories are not equal after copying files."
     );
+}
+
+#[test]
+fn test_default_copy() {
+    let path = PathBuf::from(PLAYGROUND_PATH).join("default_copy");
+
+    let source = &["file1.txt", "file2.txt", "subdir/file3.txt"];
+    let expected = &["file1.txt", "file2.txt", "subdir/file3.txt"];
+
+    let args = Args {
+        source: path.join("source"),
+        target: path.join("target"),
+        filter: "*".to_owned(),
+    };
+
+    test_helper(&path, source, expected, args);
+}
+
+#[test]
+fn test_filter() {
+    let path = PathBuf::from(PLAYGROUND_PATH).join("filter");
+
+    let source = &["file1.txt",
+            "file2.txt",
+            "subdir/file3.txt",
+            "subdir/file4.md"];
+    let expected = &["file1.txt", "file2.txt", "subdir/file3.txt"];
+
+    let args = Args {
+        source: path.join("source"),
+        target: path.join("target"),
+        filter: "*.txt".to_owned(),
+    };
+
+    test_helper(&path, source, expected, args);
 }

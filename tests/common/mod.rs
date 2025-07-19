@@ -4,27 +4,18 @@ use std::path::PathBuf;
 
 use walkdir::WalkDir;
 
-pub fn setup() {
-    clear_playground();
-    // This function can be used to set up any common test environment or configurations.
-    // For example, you might want to initialize logging, set environment variables, etc.
-    println!("Setting up common test environment...");
-}
-
-pub fn teardown() {
-    // This function can be used to clean up after tests, if necessary.
-    // For example, you might want to remove temporary files or reset configurations.
-    println!("Tearing down common test environment...");
-}
-
 pub const PLAYGROUND_PATH: &str = "target/tests/playground";
-pub const PLAYGROUND_PATH_SOURCE: &str = "target/tests/playground/source";
-pub const PLAYGROUND_PATH_TARGET: &str = "target/tests/playground/target";
 
 pub fn clear_playground() {
     println!("Clearing playground for tests...");
     if let Err(e) = std::fs::remove_dir_all(PLAYGROUND_PATH) {
-        eprintln!("Failed to clear playground: {}", e);
+        eprintln!("Warning: Failed to clear playground : {}", e);
+    }
+    if PathBuf::from(PLAYGROUND_PATH).exists() {
+        panic!(
+            "Playground directory still exists after clearing: {}",
+            PLAYGROUND_PATH
+        );
     }
 }
 
@@ -79,14 +70,16 @@ pub fn are_directory_equal(dir1: &PathBuf, dir2: &PathBuf) -> bool {
     true
 }
 
-pub fn create_files(files: &[&str]) {
+pub fn create_files(path: &PathBuf, files: &[&str]) {
     for file in files {
-        let path = PathBuf::from(PLAYGROUND_PATH.to_owned() + "/" + file);
+        let path = path.join(file);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).unwrap();
+            println!("Created directory: {}", parent.display());
         }
-        let mut f = std::fs::File::create(&path).unwrap();
+        let mut f = std::fs::File::create(&path)
+            .map_err(|e| eprintln!("Failed to create file {}: {}", path.display(), e))
+            .unwrap();
         writeln!(f, "This is a test file: {}", path.display()).unwrap();
-        println!("Created file: {}", path.display());
     }
 }

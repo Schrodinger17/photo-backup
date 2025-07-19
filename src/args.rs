@@ -10,4 +10,8 @@ pub struct Args {
 
     /// Target directory
     pub target: PathBuf,
+
+    #[arg(short, long, default_value = "*")]
+    /// Optional filter to apply to files (e.g., "*.jpg")
+    pub filter: String,
 }
