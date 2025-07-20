@@ -3,13 +3,16 @@
 mod app;
 mod args;
 mod filter;
+mod stats;
+
+use app::App;
 
 use clap::Parser;
 
 fn main() -> std::io::Result<()> {
     let args = args::Args::parse();
 
-    app::run(args)?;
+    App::new().run(args)?;
 
     Ok(())
 }
