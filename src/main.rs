@@ -3,6 +3,7 @@
 mod app;
 mod args;
 mod filter;
+mod memory;
 mod stats;
 
 use app::App;

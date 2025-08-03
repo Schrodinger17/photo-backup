@@ -1,4 +1,4 @@
-use crate::{args::Args, filter, stats::Stats};
+use crate::{args::Args, filter, memory::Memory, stats::Stats};
 
 use std::fs;
 use std::time::Instant;
@@ -7,12 +7,14 @@ use walkdir::WalkDir;
 #[derive(Debug, Default)]
 pub struct App {
     stats: Stats,
+    memory: Memory,
 }
 
 impl App {
     pub fn new() -> Self {
         Self {
             stats: Stats::new(),
+            memory: Memory::new(),
         }
     }
 
@@ -22,6 +24,9 @@ impl App {
             source,
             target,
             filter,
+            verbose,
+            duplicates,
+            flatten,
         } = args;
 
         // Check if source and target are different
@@ -59,14 +64,36 @@ impl App {
             self.stats.increment_total();
             if !filter.is_match(entry.path().to_str().unwrap_or_default()) {
                 self.stats.increment_skipped();
+                if verbose {
+                    println!("Skipping: {}", entry.path().display());
+                }
                 continue;
             }
 
             let rel_path = entry.path().strip_prefix(&source).unwrap();
-            let target_file = target.join(rel_path);
+            let target_file = if flatten {
+                target.join(entry.file_name())
+            } else {
+                target.join(rel_path)
+            };
+
+            if duplicates
+                && self
+                    .memory
+                    .add(entry.file_name().to_os_string().into_string().unwrap())
+            {
+                self.stats.increment_already_exists();
+                if verbose {
+                    println!("Already exists: {}", target_file.display());
+                }
+                continue;
+            }
 
             if target_file.exists() {
                 self.stats.increment_already_exists();
+                if verbose {
+                    println!("Already exists: {}", target_file.display());
+                }
                 continue;
             }
 
@@ -76,6 +103,13 @@ impl App {
             match fs::copy(entry.path(), &target_file) {
                 Ok(_) => {
                     self.stats.increment_copied();
+                    if verbose {
+                        println!(
+                            "Copied: {} to {}",
+                            entry.path().display(),
+                            target_file.display()
+                        );
+                    }
                 }
                 Err(e) => {
                     eprintln!("Failed to copy {}: {}", entry.path().display(), e);

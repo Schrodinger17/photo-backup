@@ -45,6 +45,9 @@ fn test_default_copy() {
         source: path.join("source"),
         target: path.join("target"),
         filter: "*".to_owned(),
+        verbose: false,
+        duplicates: false,
+        flatten: false,
     };
 
     test_helper(&path, source, expected, args);
@@ -66,6 +69,47 @@ fn test_filter() {
         source: path.join("source"),
         target: path.join("target"),
         filter: "*.txt".to_owned(),
+        verbose: false,
+        duplicates: false,
+        flatten: false,
+    };
+
+    test_helper(&path, source, expected, args);
+}
+
+#[test]
+fn test_flatten() {
+    let path = PathBuf::from(PLAYGROUND_PATH).join("flatten");
+
+    let source = &["file1.txt", "file2.txt", "subdir/file3.txt"];
+    let expected = &["file1.txt", "file2.txt", "file3.txt"];
+
+    let args = Args {
+        source: path.join("source"),
+        target: path.join("target"),
+        filter: "*".to_owned(),
+        verbose: false,
+        duplicates: false,
+        flatten: true,
+    };
+
+    test_helper(&path, source, expected, args);
+}
+
+#[test]
+fn test_duplicates() {
+    let path = PathBuf::from(PLAYGROUND_PATH).join("duplicates");
+
+    let source = &["file1.txt", "file2.txt", "subdir/file1.txt"];
+    let expected = &["file1.txt", "file2.txt"];
+
+    let args = Args {
+        source: path.join("source"),
+        target: path.join("target"),
+        filter: "*".to_owned(),
+        verbose: false,
+        duplicates: false,
+        flatten: true,
     };
 
     test_helper(&path, source, expected, args);
