@@ -19,7 +19,6 @@ impl App {
     }
 
     pub fn run(&mut self, args: Args) -> std::io::Result<()> {
-        let start_time = Instant::now();
         let Args {
             source,
             target,
@@ -53,6 +52,8 @@ impl App {
             std::process::exit(1);
         }
 
+        let start_time = Instant::now();
+
         let globs = filter.split(',').collect::<Vec<_>>();
         let filter = filter::Filter::new(&globs);
 
@@ -61,8 +62,10 @@ impl App {
             .filter_map(Result::ok)
             .filter(|e| e.file_type().is_file())
         {
+            let rel_path = entry.path().strip_prefix(&source).unwrap();
+
             self.stats.increment_total();
-            if !filter.is_match(entry.path().to_str().unwrap_or_default()) {
+            if !filter.is_match(rel_path.to_str().unwrap_or_default()) {
                 self.stats.increment_skipped();
                 if verbose {
                     println!("Skipping: {}", entry.path().display());
@@ -70,26 +73,18 @@ impl App {
                 continue;
             }
 
-            let rel_path = entry.path().strip_prefix(&source).unwrap();
             let target_file = if flatten {
                 target.join(entry.file_name())
             } else {
                 target.join(rel_path)
             };
 
-            if duplicates
-                && self
-                    .memory
-                    .add(entry.file_name().to_os_string().into_string().unwrap())
+            if target_file.exists()
+                || (duplicates
+                    && self
+                        .memory
+                        .add(entry.file_name().to_os_string().into_string().unwrap()))
             {
-                self.stats.increment_already_exists();
-                if verbose {
-                    println!("Already exists: {}", target_file.display());
-                }
-                continue;
-            }
-
-            if target_file.exists() {
                 self.stats.increment_already_exists();
                 if verbose {
                     println!("Already exists: {}", target_file.display());
@@ -100,6 +95,7 @@ impl App {
             if let Some(parent) = target_file.parent() {
                 fs::create_dir_all(parent)?;
             }
+
             match fs::copy(entry.path(), &target_file) {
                 Ok(_) => {
                     self.stats.increment_copied();
